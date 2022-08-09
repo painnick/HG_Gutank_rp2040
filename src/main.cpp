@@ -40,31 +40,6 @@ int trackPins[4] = {PIN_TRACK_A1, PIN_TRACK_A2, PIN_TRACK_B1, PIN_TRACK_B2};
 
 UART SerialBT(PIN_BLUETOOTH_TX, PIN_BLUETOOTH_RX, 0, 0);
 
-void setup() {
-  #ifdef _LOG_USB_
-  Serial.begin(115200);
-  #endif
-
-  SerialBT.begin(9600);
-
-  armsServo[GUNTANK_SIDE::LEFT].attach(PIN_LEFT_ARM);
-  armsServo[GUNTANK_SIDE::RIGHT].attach(PIN_RIGHT_ARM);
-  
-  pinMode(PIN_TRACK_A1, OUTPUT);
-  pinMode(PIN_TRACK_A2, OUTPUT);
-  pinMode(PIN_TRACK_B1, OUTPUT);
-  pinMode(PIN_TRACK_B2, OUTPUT);
-
-  pinMode(PIN_LEFT_GUN, OUTPUT);
-  pinMode(PIN_RIGHT_GUN, OUTPUT);
-
-  delay(1000);
-
-  #ifdef _LOG_USB_
-  Serial.println("R.E.A.D.Y!!!");
-  #endif
-}
-
 int armAngles[2] = {ANGLE_CENTER, ANGLE_CENTER};
 void turnArm(GUNTANK_SIDE side, GUNTANK_DIRECTION direction, int angle) {
   if (side == GUNTANK_SIDE::UNKNOWN_SIDE)
@@ -114,7 +89,6 @@ void fire(GUNTANK_SIDE side) {
   #ifdef _SEND_RESPONSE_
   responseFire(&SerialBT, side);
   #endif
-
 }
 
 void track(GUNTANK_SIDE side, GUNTANK_DIRECTION direction) {
@@ -188,6 +162,42 @@ void track(GUNTANK_SIDE side, GUNTANK_DIRECTION direction) {
   #endif
 }
 
+void setup() {
+  #ifdef _LOG_USB_
+  Serial.begin(115200);
+  #endif
+
+  SerialBT.begin(9600);
+
+  armsServo[GUNTANK_SIDE::LEFT].attach(PIN_LEFT_ARM);
+  armsServo[GUNTANK_SIDE::RIGHT].attach(PIN_RIGHT_ARM);
+  
+  pinMode(PIN_TRACK_A1, OUTPUT);
+  pinMode(PIN_TRACK_A2, OUTPUT);
+  pinMode(PIN_TRACK_B1, OUTPUT);
+  pinMode(PIN_TRACK_B2, OUTPUT);
+
+  pinMode(PIN_LEFT_GUN, OUTPUT);
+  pinMode(PIN_RIGHT_GUN, OUTPUT);
+
+  SerialBT.write("AT+NAMEGuntank RP2040");
+  while (!SerialBT.available()) {
+    delay(100);
+  }
+
+  turnArm(GUNTANK_SIDE::BOTH, GUNTANK_DIRECTION::CENTER, 0);
+  while (SerialBT.available()) {
+    #ifdef _LOG_USB_
+    Serial.write(SerialBT.read());
+    #endif
+  }
+  #ifdef _LOG_USB_
+  Serial.print("\n");
+
+  Serial.println("R.E.A.D.Y!!!");
+  #endif
+}
+
 char command[16];
 
 void loop() {
@@ -195,9 +205,11 @@ void loop() {
   while (SerialBT.available()) {
     int c = SerialBT.read();
     command[index] = c;
-    if (c == '/')
-      break;
     index++;
+      unsigned long atThisTime = millis();
+    do {
+        ;
+    } while (atThisTime + 5 > millis()); // 데이터 끊김 방지
   }
   if (index == 0) {
     delay(200);

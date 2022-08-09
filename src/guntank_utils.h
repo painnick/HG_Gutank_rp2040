@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Serial.h>
 #include "guntank_types.h"
 
